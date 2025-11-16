@@ -1,72 +1,129 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import traceback
 
-# --- Load the trained model ---
-try:
-    model = joblib.load("loan_default_model.pkl")
-except Exception as e:
-    st.error(f"Could not load model: {e}")
-    st.stop()
+# --- Load Model ---
+model = joblib.load("loan_default_model.pkl")  # your saved pipeline + model
 
-st.set_page_config(page_title="Loan Default Predictor", layout="centered")
-st.title("💳 Loan Default Prediction (Raw Inputs Only)")
+# --- Page config ---
+st.set_page_config(
+    page_title="💳 Loan Default Prediction",
+    page_icon="💳",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- Raw Example Data (no encodings) ---
-data = {
-    'age': [35],
-    'gender': ['Male'],
-    'marital_status': ['Single'],
-    'education_level': ['Graduate'],
-    'employment_status': ['Employed'],
-    'annual_income': [60000],
-    'debt_to_income_ratio': [20.0],
-    'credit_score': [700],
-    'loan_amount': [20000],
-    'loan_purpose': ['Debt Consolidation'],
-    'interest_rate': [10.0],
-    'loan_term': [60],
-    'installment': [500],
-    'num_of_open_accounts': [5],
-    'total_credit_limit': [100000],
-    'current_balance': [20000],
-    'delinquency_history': [0],
-    'public_records': [0],
-    'num_of_delinquencies': [0],
-    'grade': ['A'],
-    'subgrade': ['A1']
-}
+# --- Header ---
+st.markdown(
+    """
+    <div style="background: linear-gradient(90deg, #4b6cb7, #182848);
+                padding:20px; border-radius:10px; text-align:center;">
+        <h1 style="color:white;">💳 Loan Default Prediction App</h1>
+        <p style="color:white;">Predict whether a borrower is likely to repay or default on a loan.</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-df = pd.DataFrame(data)
+# --- Sidebar for inputs ---
+st.sidebar.header("📊 Borrower Details")
 
-# --- Add engineered features (these should be numerics) ---
-df['income_to_loan'] = df['annual_income'] / df['loan_amount']
-df['credit_utilization'] = df['current_balance'] / df['total_credit_limit']
-df['installment_to_income'] = df['installment'] / (df['annual_income'] / 12)
+# Categorical Inputs
+gender = st.sidebar.selectbox("Gender", ["Male", "Female", "Other"])
+marital_status = st.sidebar.selectbox("Marital Status", ["Single", "Married", "Divorced", "Widowed"])
+education_level = st.sidebar.selectbox("Education Level", ["High School", "Bachelor's", "Master's", "PhD", "Other"])
+employment_status = st.sidebar.selectbox("Employment Status", ["Employed", "Unemployed", "Self-Employed", "Student", "Retired"])
+loan_purpose = st.sidebar.selectbox("Loan Purpose", ["Debt Consolidation", "Home Improvement", "Car", "Education", "Medical", "Business", "Vacation", "Other"])
+grade = st.sidebar.selectbox("Loan Grade", ["A", "B", "C", "D", "E", "F", "G"])
+subgrade = st.sidebar.selectbox("Subgrade", ["A1","A2","A3","B1","B2","C1","C2","D1","E1","F1","G1"])
 
-# --- Ensure feature order matches the pipeline (if saved) ---
-if hasattr(model, "feature_names_in_"):
-    df = df[list(model.feature_names_in_)]
+# --- Numeric Inputs with sliders ---
+st.markdown("### 💰 Financial & Loan Details")
+col1, col2, col3 = st.columns(3)
 
-st.header("🎯 Prediction Result")
-threshold = 0.8  # high risk if default probability >= 80%
+with col1:
+    age = st.slider("Age", 18, 100, 35)
+    annual_income = st.slider("Annual Income ($)", 0, 500000, 50000, step=1000)
+    debt_to_income_ratio = st.slider("Debt-to-Income Ratio (%)", 0.0, 100.0, 20.0, step=0.1)
+    credit_score = st.slider("Credit Score", 300, 850, 700)
+    loan_amount = st.slider("Loan Amount ($)", 0, 500000, 10000, step=500)
 
-try:
-    proba = model.predict_proba(df)[0]
-    idx_default = list(model.classes_).index(1) if 1 in model.classes_ else 0
-    idx_payback = list(model.classes_).index(0) if 0 in model.classes_ else 1
+with col2:
+    interest_rate = st.slider("Interest Rate (%)", 0.0, 30.0, 10.0, step=0.1)
+    loan_term = st.selectbox("Loan Term", ["36 months", "60 months"])
+    installment = st.slider("Monthly Installment ($)", 0, 20000, 500)
+    num_of_open_accounts = st.slider("Number of Open Accounts", 0, 50, 5)
+    total_credit_limit = st.slider("Total Credit Limit ($)", 0, 1000000, 50000, step=1000)
 
-    prob_default = proba[idx_default]
-    prob_payback = proba[idx_payback]
+with col3:
+    current_balance = st.slider("Current Balance ($)", 0, 500000, 10000, step=1000)
+    delinquency_history = st.slider("Delinquency History (count)", 0, 50, 0)
+    public_records = st.slider("Public Records (count)", 0, 50, 0)
+    num_of_delinquencies = st.slider("Number of Delinquencies", 0, 50, 0)
+    income_to_loan = st.slider("Income to Loan Ratio", 0.0, 100.0, 10.0, step=0.1)
+    credit_utilization = st.slider("Credit Utilization (%)", 0.0, 100.0, 50.0, step=0.1)
+    installment_to_income = st.slider("Installment to Income Ratio", 0.0, 5.0, 0.2, step=0.01)
 
-    st.metric("Probability of Default", f"{prob_default*100:.1f}%")
-    st.metric("Probability of Payback", f"{prob_payback*100:.1f}%")
+# --- Prepare DataFrame for model ---
+input_data = pd.DataFrame({
+    'gender':[gender],
+    'marital_status':[marital_status],
+    'education_level':[education_level],
+    'employment_status':[employment_status],
+    'loan_purpose':[loan_purpose],
+    'grade':[grade],
+    'subgrade':[subgrade],
+    'age':[age],
+    'annual_income':[annual_income],
+    'debt_to_income_ratio':[debt_to_income_ratio],
+    'credit_score':[credit_score],
+    'loan_amount':[loan_amount],
+    'interest_rate':[interest_rate],
+    'loan_term':[loan_term],
+    'installment':[installment],
+    'num_of_open_accounts':[num_of_open_accounts],
+    'total_credit_limit':[total_credit_limit],
+    'current_balance':[current_balance],
+    'delinquency_history':[delinquency_history],
+    'public_records':[public_records],
+    'num_of_delinquencies':[num_of_delinquencies],
+    'income_to_loan':[income_to_loan],
+    'credit_utilization':[credit_utilization],
+    'installment_to_income':[installment_to_income],
+})
 
-    if prob_default >= threshold:
-        st.error(f"🚨 HIGH RISK: {prob_default*100:.1f}% chance of DEFAULT.")
-    else:
-        st.success(f"💰 SAFE BORROWER: {prob_payback*100:.1f}% chance of PAYBACK.")
+# --- Fix numeric conversions ---
+input_data['loan_term'] = input_data['loan_term'].str.extract('(\d+)').astype(int)  # "36 months" → 36
+input_data['subgrade'] = input_data['subgrade'].str.extract('(\d+)').astype(int)  # "A1" → 1
 
-except Exception as e:
-    st.error(f"⚠️ Prediction Error: {e}\n{traceback.format_exc()}")
+# --- Predict ---
+st.markdown("---")
+if st.button("🔍 Predict Loan Default Risk"):
+    try:
+        prediction = model.predict(input_data)[0]
+        proba = model.predict_proba(input_data)[0][1]
+
+        st.markdown("### 📊 Prediction Result")
+
+        if prediction == 1:
+            st.error(f"⚠️ High Risk: Loan likely to DEFAULT. Probability: {proba:.2f}")
+        else:
+            st.success(f"✅ Low Risk: Loan likely to be PAID BACK. Probability: {1 - proba:.2f}")
+
+        # Show probability bar
+        st.markdown("#### 🔹 Risk Probability")
+        st.progress(int(proba*100))
+
+    except Exception as e:
+        st.error(f"Error: {e}")
+
+# --- Footer ---
+st.markdown(
+    """
+    <hr>
+    <p style="text-align:center; color:grey;">
+    Developed by <b>Zain Khan</b> | Data Scientist 💻
+    </p>
+    """,
+    unsafe_allow_html=True
+)
