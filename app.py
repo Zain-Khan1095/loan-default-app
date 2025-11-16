@@ -11,9 +11,9 @@ except Exception as e:
     st.stop()
 
 st.set_page_config(page_title="Loan Default Predictor", layout="centered")
-st.title("💳 Loan Default Prediction (Universal Encoding)")
+st.title("💳 Loan Default Prediction (Raw Inputs Only)")
 
-# --- Raw Example Data ---
+# --- Raw Example Data (no encodings) ---
 data = {
     'age': [35],
     'gender': ['Male'],
@@ -40,21 +40,17 @@ data = {
 
 df = pd.DataFrame(data)
 
-# --- Add engineered features ---
+# --- Add engineered features (these should be numerics) ---
 df['income_to_loan'] = df['annual_income'] / df['loan_amount']
 df['credit_utilization'] = df['current_balance'] / df['total_credit_limit']
 df['installment_to_income'] = df['installment'] / (df['annual_income'] / 12)
 
-# --- Universal: encode ALL object columns to categorical codes ---
-for col in df.select_dtypes(include=['object', 'category']).columns:
-    df[col] = df[col].astype('category').cat.codes
-
-# --- Use correct column order if available ---
+# --- Ensure feature order matches the pipeline (if saved) ---
 if hasattr(model, "feature_names_in_"):
     df = df[list(model.feature_names_in_)]
 
 st.header("🎯 Prediction Result")
-threshold = 0.8
+threshold = 0.8  # high risk if default probability >= 80%
 
 try:
     proba = model.predict_proba(df)[0]
