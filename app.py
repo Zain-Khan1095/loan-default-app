@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Load the trained model (pipeline already includes preprocessing)
+# Load the trained model pipeline (includes preprocessing)
 model = joblib.load("loan_default_model.pkl")
 
-# Streamlit page configuration
+# Streamlit page config
 st.set_page_config(page_title="Loan Default Predictor 💳", page_icon="💰", layout="wide")
 
 # Custom CSS for better UI
@@ -16,11 +16,10 @@ h1 { text-align: center; color: #1a73e8; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
-# App Header
 st.title("💳 Loan Default Prediction Dashboard")
 st.write("Predict whether a borrower will **pay back** or **default** on a loan.")
 
-# Sidebar: Threshold setting
+# Sidebar for threshold
 st.sidebar.header("⚙️ Model Settings")
 threshold = st.sidebar.slider("Set Default Risk Threshold", 0.5, 0.95, 0.8, 0.05)
 st.sidebar.info(f"High risk if default probability ≥ {threshold:.2f}")
@@ -59,12 +58,12 @@ num_of_delinquencies = st.number_input("Number of Delinquencies", 0, 10, 0)
 grade = st.selectbox("Grade", ["A", "B", "C", "D", "E", "F", "G"])
 subgrade = st.selectbox("Subgrade", ["A1","A2","A3","B1","B2","C1","C2","D1","D2","E1","E2"])
 
-# --- Derived Features ---
+# Derived features
 income_to_loan = annual_income / loan_amount if loan_amount != 0 else 0
 installment_to_income = installment / (annual_income / 12) if annual_income != 0 else 0
 credit_utilization = current_balance / total_credit_limit if total_credit_limit != 0 else 0
 
-# --- Prepare input DataFrame ---
+# --- Prepare DataFrame ---
 input_data = pd.DataFrame({
     'age':[age], 'gender':[gender], 'marital_status':[marital_status],
     'education_level':[education_level], 'annual_income':[annual_income],
@@ -78,18 +77,19 @@ input_data = pd.DataFrame({
     'installment_to_income':[installment_to_income], 'grade':[grade], 'subgrade':[subgrade]
 })
 
-# --- Convert categorical to string ---
+# Ensure all categorical columns are string
 categorical_cols = ["gender","marital_status","education_level","employment_status",
                     "loan_purpose","grade","subgrade"]
 for col in categorical_cols:
     input_data[col] = input_data[col].astype(str)
 
-# --- One-hot encode categorical columns ---
+# One-hot encode categorical columns
 input_data = pd.get_dummies(input_data)
 
-# --- Align input columns to model's expected features ---
+# Align input to model columns and ensure numeric
 expected_cols = model.feature_names_in_
 input_data = input_data.reindex(columns=expected_cols, fill_value=0)
+input_data = input_data.astype(float)
 
 # --- Prediction ---
 st.markdown("### 🎯 Prediction Result")
