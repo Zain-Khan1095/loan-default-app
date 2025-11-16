@@ -64,6 +64,16 @@ with col3:
     credit_utilization = st.slider("Credit Utilization (%)", 0.0, 100.0, 50.0, step=0.1)
     installment_to_income = st.slider("Installment to Income Ratio", 0.0, 5.0, 0.2, step=0.01)
 
+# --- Threshold Slider ---
+st.sidebar.header("⚙️ Prediction Threshold")
+threshold = st.sidebar.slider(
+    "Default Probability Threshold (%)",
+    min_value=0,
+    max_value=100,
+    value=80,
+    step=1
+) / 100  # convert percentage to 0-1 float
+
 # --- Prepare DataFrame for model ---
 input_data = pd.DataFrame({
     'gender':[gender],
@@ -100,12 +110,10 @@ input_data['subgrade'] = input_data['subgrade'].str.extract('(\d+)').astype(int)
 st.markdown("---")
 if st.button("🔍 Predict Loan Default Risk"):
     try:
-        prediction = model.predict(input_data)[0]
-        proba = model.predict_proba(input_data)[0][1]
+        proba = model.predict_proba(input_data)[0][1]  # probability of default
 
         st.markdown("### 📊 Prediction Result")
-
-        if prediction == 1:
+        if proba >= threshold:
             st.error(f"⚠️ High Risk: Loan likely to DEFAULT. Probability: {proba:.2f}")
         else:
             st.success(f"✅ Low Risk: Loan likely to be PAID BACK. Probability: {1 - proba:.2f}")
@@ -115,7 +123,7 @@ if st.button("🔍 Predict Loan Default Risk"):
         st.progress(int(proba*100))
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"⚠️ Prediction Error: {e}")
 
 # --- Footer ---
 st.markdown(
