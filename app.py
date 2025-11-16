@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Load model
+# Load model (pipeline includes preprocessing)
 model = joblib.load("loan_default_model.pkl")
 
 # Streamlit page setup
@@ -11,46 +11,23 @@ st.set_page_config(page_title="Loan Risk Predictor 💰", page_icon="💳", layo
 # Custom CSS for modern look
 st.markdown("""
 <style>
-    .main {
-        background-color: #f8fafc;
-    }
-    h1 {
-        text-align: center;
-        color: #1a73e8;
-        font-weight: 700;
-    }
-    .stButton button {
-        width: 100%;
-        background-color: #1a73e8 !important;
-        color: white !important;
-        border-radius: 10px;
-        height: 3em;
-        font-size: 16px;
-        font-weight: 600;
-    }
-    .stSuccess {
-        background-color: #e6f4ea !important;
-    }
-    .stError {
-        background-color: #fce8e6 !important;
-    }
-    .metric-card {
-        background-color: white;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
-    }
+    .main { background-color: #f8fafc; }
+    h1 { text-align: center; color: #1a73e8; font-weight: 700; }
+    .stButton button { width: 100%; background-color: #1a73e8 !important; color: white !important; border-radius: 10px; height: 3em; font-size: 16px; font-weight: 600; }
+    .stSuccess { background-color: #e6f4ea !important; }
+    .stError { background-color: #fce8e6 !important; }
+    .metric-card { background-color: white; padding: 20px; border-radius: 15px; box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05); }
 </style>
 """, unsafe_allow_html=True)
 
 # --- App Header ---
 st.title("💳 Loan Default Prediction Dashboard")
-st.write("Use this app to predict whether a **loan will be paid back or defaulted** based on borrower information.")
+st.write("Predict whether a borrower will **pay back** or **default** on a loan.")
 
-# --- Sidebar Configuration ---
-st.sidebar.header("⚙️ Model Configuration")
+# --- Sidebar ---
+st.sidebar.header("⚙️ Model Settings")
 threshold = st.sidebar.slider("Set Default Risk Threshold", 0.5, 0.95, 0.8, 0.05)
-st.sidebar.info(f"The model flags a borrower as 'High Risk' only if default probability ≥ **{threshold:.2f}**")
+st.sidebar.info(f"High risk if default probability ≥ {threshold:.2f}")
 
 # --- Input Section ---
 st.header("📋 Borrower Information")
@@ -80,20 +57,14 @@ with col3:
 
 # Additional Inputs
 colA, colB, colC = st.columns(3)
-with colA:
-    num_of_open_accounts = st.number_input("Open Accounts", 0, 30, 5)
-with colB:
-    delinquency_history = st.number_input("Delinquency History", 0, 10, 0)
-with colC:
-    public_records = st.number_input("Public Records", 0, 10, 0)
+with colA: num_of_open_accounts = st.number_input("Open Accounts", 0, 30, 5)
+with colB: delinquency_history = st.number_input("Delinquency History", 0, 10, 0)
+with colC: public_records = st.number_input("Public Records", 0, 10, 0)
 
 colX, colY, colZ = st.columns(3)
-with colX:
-    num_of_delinquencies = st.number_input("Number of Delinquencies", 0, 10, 0)
-with colY:
-    grade = st.selectbox("Grade", ["A", "B", "C", "D", "E", "F", "G"])
-with colZ:
-    subgrade = st.selectbox("Subgrade", ["A1","A2","A3","B1","B2","C1","C2","D1","D2","E1","E2"])
+with colX: num_of_delinquencies = st.number_input("Number of Delinquencies", 0, 10, 0)
+with colY: grade = st.selectbox("Grade", ["A", "B", "C", "D", "E", "F", "G"])
+with colZ: subgrade = st.selectbox("Subgrade", ["A1","A2","A3","B1","B2","C1","C2","D1","D2","E1","E2"])
 
 # --- Derived Features ---
 income_to_loan = annual_income / loan_amount if loan_amount != 0 else 0
@@ -102,31 +73,23 @@ credit_utilization = current_balance / total_credit_limit if total_credit_limit 
 
 # --- Prepare DataFrame ---
 input_data = pd.DataFrame({
-    'age': [age],
-    'gender': [gender],
-    'marital_status': [marital_status],
-    'education_level': [education_level],
-    'annual_income': [annual_income],
-    'employment_status': [employment_status],
-    'debt_to_income_ratio': [debt_to_income_ratio],
-    'credit_score': [credit_score],
-    'loan_amount': [loan_amount],
-    'loan_purpose': [loan_purpose],
-    'interest_rate': [interest_rate],
-    'loan_term': [loan_term],
-    'installment': [installment],
-    'num_of_open_accounts': [num_of_open_accounts],
-    'total_credit_limit': [total_credit_limit],
-    'current_balance': [current_balance],
-    'delinquency_history': [delinquency_history],
-    'public_records': [public_records],
-    'num_of_delinquencies': [num_of_delinquencies],
-    'income_to_loan': [income_to_loan],
-    'credit_utilization': [credit_utilization],
-    'installment_to_income': [installment_to_income],
-    'grade': [grade],
-    'subgrade': [subgrade]
+    'age':[age], 'gender':[gender], 'marital_status':[marital_status],
+    'education_level':[education_level], 'annual_income':[annual_income],
+    'employment_status':[employment_status], 'debt_to_income_ratio':[debt_to_income_ratio],
+    'credit_score':[credit_score], 'loan_amount':[loan_amount], 'loan_purpose':[loan_purpose],
+    'interest_rate':[interest_rate], 'loan_term':[loan_term], 'installment':[installment],
+    'num_of_open_accounts':[num_of_open_accounts], 'total_credit_limit':[total_credit_limit],
+    'current_balance':[current_balance], 'delinquency_history':[delinquency_history],
+    'public_records':[public_records], 'num_of_delinquencies':[num_of_delinquencies],
+    'income_to_loan':[income_to_loan], 'credit_utilization':[credit_utilization],
+    'installment_to_income':[installment_to_income], 'grade':[grade], 'subgrade':[subgrade]
 })
+
+# --- Ensure categorical columns are strings (prevents float conversion error) ---
+categorical_cols = ["gender","marital_status","education_level","employment_status",
+                    "loan_purpose","grade","subgrade"]
+for col in categorical_cols:
+    input_data[col] = input_data[col].astype(str)
 
 # --- Prediction Section ---
 st.markdown("### 🎯 Prediction Result")
@@ -137,14 +100,15 @@ if st.button("Predict Loan Outcome 💡"):
         prob_default = proba[0]
         prob_payback = proba[1]
 
+        # Show probabilities
         st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
         st.metric(label="Probability of Default", value=f"{prob_default*100:.2f}%")
         st.progress(float(prob_default))
-
         st.metric(label="Probability of Payback", value=f"{prob_payback*100:.2f}%")
         st.progress(float(prob_payback))
         st.markdown("</div>", unsafe_allow_html=True)
 
+        # Threshold logic
         if prob_default >= threshold:
             st.error(f"🚨 HIGH RISK: {prob_default*100:.1f}% chance of DEFAULT.")
         else:
@@ -152,4 +116,4 @@ if st.button("Predict Loan Outcome 💡"):
 
     except Exception as e:
         st.error(f"⚠️ Error: {e}")
-        st.write("Make sure all input features are filled correctly and match the model schema.")
+        st.write("Check all inputs and ensure they match the model's expected format.")
