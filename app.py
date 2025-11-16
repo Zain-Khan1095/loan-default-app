@@ -2,9 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+import traceback
 
 # --- Load the trained RandomForest model ---
-model = joblib.load("loan_default_model.pkl")
+try:
+    model = joblib.load("loan_default_model.pkl")
+except Exception as e:
+    st.error(f"Could not load model: {e}")
+    st.stop()
 
 st.set_page_config(page_title="Loan Default Predictor", layout="centered")
 st.title("💳 Loan Default Prediction (Fixed Inputs)")
@@ -47,7 +52,8 @@ cat_maps = {
 }
 
 for col, mapping in cat_maps.items():
-    df[col] = df[col].map(mapping)
+    if col in df:
+        df[col] = df[col].map(mapping)
 
 # --- Compute missing engineered features ---
 df['income_to_loan'] = df['annual_income'] / df['loan_amount']
@@ -57,14 +63,24 @@ df['installment_to_income'] = df['installment'] / (df['annual_income'] / 12)
 # --- Force all columns to numeric to avoid isnan errors ---
 df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
 
-# --- Prediction ---
-threshold = 0.8  # high risk if default probability >= 80%
 st.header("🎯 Prediction Result")
 
+# --- Prediction ---
+threshold = 0.8  # high risk if default probability >= 80%
+
 try:
+    # Ensure features are in expected order
+    if hasattr(model, "feature_names_in_"):
+        expected_features = model.feature_names_in_
+        df = df[expected_features]
+        
     proba = model.predict_proba(df)[0]
-    prob_default = proba[0]
-    prob_payback = proba[1]
+    # Check class order
+    idx_default = list(model.classes_).index(1) if 1 in model.classes_ else 0
+    idx_payback = list(model.classes_).index(0) if 0 in model.classes_ else 1
+
+    prob_default = proba[idx_default]
+    prob_payback = proba[idx_payback]
 
     st.metric("Probability of Default", f"{prob_default*100:.1f}%")
     st.metric("Probability of Payback", f"{prob_payback*100:.1f}%")
@@ -75,4 +91,4 @@ try:
         st.success(f"💰 SAFE BORROWER: {prob_payback*100:.1f}% chance of PAYBACK.")
 
 except Exception as e:
-    st.error(f"⚠️ Prediction Error: {e}")
+    st.error(f"⚠️ Prediction Error: {e}\n{traceback.format_exc()}")
