@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import joblib
 import traceback
 
@@ -14,7 +13,7 @@ except Exception as e:
 st.set_page_config(page_title="Loan Default Predictor", layout="centered")
 st.title("💳 Loan Default Prediction (Fixed Inputs)")
 
-# --- Fixed input values ---
+# --- Fixed input values (raw categories) ---
 data = {
     'age': [35],
     'gender': ['Male'],
@@ -41,37 +40,20 @@ data = {
 
 df = pd.DataFrame(data)
 
-# --- Manual encoding for all categorical columns ---
-cat_maps = {
-    'gender': {'Male':0,'Female':1},
-    'marital_status': {'Single':0,'Married':1},
-    'education_level': {'High School':0,'Graduate':1,'Master':2,'PhD':3},
-    'employment_status': {'Employed':0,'Unemployed':1,'Student':2,'Retired':3,'Self-Employed':4},
-    'grade': {'A':0,'B':1,'C':2,'D':3,'E':4,'F':5,'G':6},
-    'subgrade': {'A1':0,'A2':1,'A3':2,'B1':3,'B2':4,'C1':5,'C2':6,'D1':7,'D2':8,'E1':9,'E2':10}
-}
-
-for col, mapping in cat_maps.items():
-    if col in df:
-        df[col] = df[col].map(mapping)
-
-# --- Compute missing engineered features ---
+# --- Compute missing features (these are numeric, safe) ---
 df['income_to_loan'] = df['annual_income'] / df['loan_amount']
 df['credit_utilization'] = df['current_balance'] / df['total_credit_limit']
 df['installment_to_income'] = df['installment'] / (df['annual_income'] / 12)
 
-# --- Force all columns to numeric to avoid isnan errors ---
-df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
-
 st.header("🎯 Prediction Result")
 
-# --- Prediction ---
-threshold = 0.8  # high risk if default probability >= 80%
+threshold = 0.8  # High risk if default probability >= 80%
 
 try:
-    # Ensure features are in expected order
+    # Ensure features are in expected order if pipeline needs it
     if hasattr(model, "feature_names_in_"):
         expected_features = model.feature_names_in_
+        # If you get a KeyError here, fix your data keys to match exactly.
         df = df[expected_features]
         
     proba = model.predict_proba(df)[0]
